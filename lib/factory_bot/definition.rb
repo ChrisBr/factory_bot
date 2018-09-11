@@ -7,7 +7,7 @@ module FactoryBot
       @name              = name
       @declarations      = DeclarationList.new(name)
       @callbacks         = []
-      @defined_traits    = Set.new
+      @defined_traits    = Decorator::DisallowsDuplicatesRegistry.new(Registry.new('Trait'))
       @to_create         = nil
       @base_traits       = base_traits
       @additional_traits = []
@@ -78,7 +78,8 @@ module FactoryBot
     end
 
     def define_trait(trait)
-      @defined_traits.add(trait)
+      return if @defined_traits.registered?(trait.name)
+      @defined_traits.register(trait.name, trait)
     end
 
     def define_constructor(&block)
@@ -111,11 +112,11 @@ module FactoryBot
     end
 
     def trait_by_name(name)
-      trait_for(name) || FactoryBot.trait_by_name(name)
-    end
-
-    def trait_for(name)
-      defined_traits.detect { |trait| trait.name == name }
+      if defined_traits.registered?(name)
+        defined_traits.find(name)
+      else
+        FactoryBot.trait_by_name(name)
+      end
     end
 
     def initialize_copy(source)
